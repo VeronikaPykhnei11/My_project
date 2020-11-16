@@ -5,7 +5,7 @@ app = Flask(__name__)
 
 @app.route('/api/v1/hello-world-<int:variant>')
 def hello_world(variant):
-    return 'Hello World ' + str(variant)
+    return 'Hello World ' + str(variant) + "!"
 
 
 @app.route('/')
