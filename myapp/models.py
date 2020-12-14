@@ -2,6 +2,8 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate, MigrateCommand
 from flask_script import Manager
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import relationship
 
 app = Flask(__name__)
 app.debug = True
@@ -12,21 +14,6 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 manager.add_command('db', MigrateCommand)
 
-film_hall = db.Table('film_hall',
-        db.Column('film_id', db.Integer, db.ForeignKey('Film.id'), primary_key=True),
-        db.Column('hall_id', db.Integer, db.ForeignKey('Hall.id'), primary_key=True)
-)
-
-film_timetable = db.Table('film_timetable',
-            db.Column('film_id', db.Integer, db.ForeignKey('Film.id'), primary_key=True),
-            db.Column('timetable_id', db.Integer, db.ForeignKey('Timetable.id'), primary_key=True)
-)
-
-hall_timetable = db.Table('hall_timetable',
-            db.Column('hall_id', db.Integer, db.ForeignKey('Hall.id'), primary_key=True),
-            db.Column('timetable_id', db.Integer, db.ForeignKey('Timetable.id'), primary_key=True)
-)
-
 
 class Film(db.Model):
     __tablename__ = 'Film'
@@ -34,8 +21,7 @@ class Film(db.Model):
     title = db.Column(db.String(255), nullable=False)
     duration = db.Column(db.Float(), nullable=False)
     rating = db.Column(db.Float(), nullable=False)
-    halls = db.relationship('Hall', secondary=film_hall, lazy='subquery',
-                           backref=db.backref('Film', lazy=True))
+    records = db.relationship('Records', backref='Film', uselist=False, lazy='joined')
     def repr(self):
         return '<Film %r' % self.title
 
@@ -44,7 +30,7 @@ class Hall(db.Model):
     __tablename__ = 'Hall'
     id = db.Column(db.Integer(), primary_key=True)
     opacity = db.Column(db.Integer(), nullable=False)
-
+    records = db.relationship('Records', backref='Hall', uselist=False, lazy='joined')
 
     def repr(self):
         return "Hall: {} - {}>".format(id, self.opacity)
@@ -59,7 +45,7 @@ class Admin(db.Model):
     email = db.Column(db.String(255), nullable=False)
     phone = db.Column(db.String(255), nullable=False)
     password = db.Column(db.String(255), nullable=False)
-    timetables = db.relationship('Timetable', backref='Admin')
+    timetable = relationship('Timetable', backref='Admin', uselist=False, lazy='joined')
 
     def repr(self):
         return "Admin: {} - {} {}>".format(id, self.firstname, self.lastname)
@@ -68,12 +54,16 @@ class Admin(db.Model):
 class Timetable(db.Model):
     __tablename__ = 'Timetable'
     id = db.Column(db.Integer(), primary_key=True)
-    Admin_id = db.Column(db.Integer(), db.ForeignKey('Admin.id'))
-    films = db.relationship('Film', secondary=film_timetable, lazy='subquery',
-                            backref=db.backref('Timetable', lazy=True))
-    halls = db.relationship('Hall', secondary=hall_timetable, lazy='subquery',
-                            backref=db.backref('Timetable', lazy=True))
+    Admin_id = db.Column(db.Integer, ForeignKey('Admin.id'))
+    records = db.relationship('Records', backref='Timetable', uselist=False, lazy='joined')
 
+
+class Records(db.Model):
+    __tablename__ = 'Records'
+    id = db.Column(db.Integer(), primary_key=True)
+    timetable_id = db.Column(db.Integer, ForeignKey('Timetable.id'))
+    film_id = db.Column(db.Integer, ForeignKey('Film.id'))
+    hall_id = db.Column(db.Integer, ForeignKey('Hall.id'))
 
 if __name__ == '__main__':
     manager.run()
