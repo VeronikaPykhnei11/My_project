@@ -1,0 +1,600 @@
+openapi: 3.0.1
+info:
+  title: Swagger Cinema
+  version: 1.0.0
+servers:
+- url: https://petstore.swagger.io/v2
+- url: http://petstore.swagger.io/v2
+tags:
+- name: film
+  description: Everything about films
+- name: hall
+  description: About cinemas' halls
+- name: admin
+  description: Operations about admin
+- name: timetable
+  description: All about films timetable
+paths:
+  /film:
+    post:
+      tags:
+      - film
+      summary: Add a new film to the timetable
+      operationId: addFilm
+      requestBody:
+        description: Film object that needs to be added to the timetable
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Film'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/Film'
+        required: true
+      responses:
+        200:
+          description: successful operation
+          content: {}
+        405:
+          description: Invalid input
+          content: {}
+      security:
+      - petstore_auth:
+        - write:pets
+        - read:pets
+      x-codegen-request-body-name: body
+  /film/{filmId}:
+    get:
+      tags:
+      - film
+      summary: Find film by ID
+      description: Returns a single film
+      operationId: getFilmById
+      parameters:
+      - name: filmId
+        in: path
+        description: ID of film to return
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Film'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Film'
+        400:
+          description: Invalid ID supplied
+          content: {}
+        404:
+          description: Film not found
+          content: {}
+      security:
+      - api_key: []
+    put:
+      tags:
+      - film
+      summary: Updates a film in the timetable with form data
+      operationId: updateFilmWithForm
+      parameters:
+      - name: filmId
+        in: path
+        description: ID of film that needs to be updated
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              properties:
+                id:
+                  type: integer
+                rating:
+                  type: string
+                  description: Update rating
+                
+      responses:
+        200:
+          description: successful operation
+          content: {}
+        405:
+          description: Invalid input
+          content: {}
+      security:
+      - petstore_auth:
+        - write:pets
+        - read:pets
+    delete:
+      tags:
+      - film
+      summary: Deletes a film
+      operationId: deleteFilm
+      parameters:
+      - name: filmId
+        in: path
+        description: Film id to delete
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        200:
+          description: successful operation
+          content: {}
+        400:
+          description: Invalid ID supplied
+          content: {}
+        404:
+          description: Film not found
+          content: {}
+      security:
+      - petstore_auth:
+        - write:pets
+        - read:pets
+  /hall:
+    post:
+      tags:
+      - hall
+      summary: Add a new hall to the timetable
+      operationId: addHall
+      requestBody:
+        description: Hall object that needs to be added to the timetable
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Hall'
+        required: true
+      responses:
+        200:
+          description: successful operation
+          content: {}
+        405:
+          description: Invalid input
+          content: {}
+      security:
+      - petstore_auth:
+        - write:pets
+        - read:pets
+      x-codegen-request-body-name: body
+  /hall/{hallId}:
+    get:
+      tags:
+      - hall
+      summary: Find hall by ID
+      description: Returns a single hall
+      operationId: getHallById
+      parameters:
+      - name: hallId
+        in: path
+        description: ID of hall to return
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hall'
+        400:
+          description: Invalid ID supplied
+          content: {}
+        404:
+          description: Hall not found
+          content: {}
+      security:
+      - api_key: []
+    put:
+      tags:
+      - hall
+      summary: Updates a hall in the timetable with form data
+      operationId: updateHallWithForm
+      parameters:
+      - name: hallId
+        in: path
+        description: ID of hall that needs to be updated
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              properties:
+                id:
+                  type: integer
+                opacity:
+                  type: integer
+                  description: Update opacity
+      responses:
+        200:
+          description: successful operation
+          content: {}
+        405:
+          description: Invalid input
+          content: {}
+      security:
+      - petstore_auth:
+        - write:pets
+        - read:pets
+    delete:
+      tags:
+      - hall
+      summary: Deletes a hall
+      operationId: deleteHall
+      parameters:
+      - name: api_key
+        in: header
+        schema:
+          type: string
+      - name: hallId
+        in: path
+        description: hall id to delete
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        200:
+          description: successful operation
+          content: {}
+        400:
+          description: Invalid ID supplied
+          content: {}
+        404:
+          description: hall not found
+          content: {}
+      security:
+      - petstore_auth:
+        - write:pets
+        - read:pets
+  /admin:
+    post:
+      tags:
+      - admin
+      summary: Create admin
+      description: This can only be done by the logged in admin.
+      operationId: createAdmin
+      requestBody:
+        description: Created admin object
+        content:
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Admin'
+        required: true
+      responses:
+        default:
+          description: successful operation
+          content: {}
+      x-codegen-request-body-name: body
+  /admin/login:
+    get:
+      tags:
+      - admin
+      summary: Logs user into the system
+      operationId: loginUser
+      parameters:
+      - name: username
+        in: query
+        description: The admin name for login
+        required: true
+        schema:
+          type: string
+      - name: password
+        in: query
+        description: The password for login in clear text
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          description: successful operation
+          headers:
+            X-Rate-Limit:
+              description: calls per hour allowed by the user
+              schema:
+                type: integer
+                format: int32
+            X-Expires-After:
+              description: date in UTC when token expires
+              schema:
+                type: string
+                format: date-time
+          content:
+            application/xml:
+              schema:
+                type: string
+            application/json:
+              schema:
+                type: string
+        400:
+          description: Invalid admin_name/password supplied
+          content: {}
+  /admin/logout:
+    get:
+      tags:
+      - admin
+      summary: Logs out current logged in admin session
+      operationId: logoutAdmin
+      responses:
+        default:
+          description: successful operation
+          content: {}
+  /admin/{admin_id}:
+    get:
+      tags:
+      - admin
+      summary: Get admin by admin id
+      operationId: getAdminByName
+      parameters:
+      - name: admin_id
+        in: path
+        description: ID of admin to return
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Admin'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Admin'
+        400:
+          description: Invalid admin_id supplied
+          content: {}
+        404:
+          description: Admin not found
+          content: {}
+    put:
+      tags:
+      - admin
+      summary: Updated admin
+      description: This can only be done by the logged in admin.
+      operationId: updateAdmin
+      parameters:
+      - name: admin_id
+        in: path
+        description: ID of admin to return
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              properties:
+                id:
+                  type: integer
+                nickname:
+                  type: string
+                  description: Update nickname
+        required: true
+      responses:
+        400:
+          description: Invalid admin supplied
+          content: {}
+        404:
+          description: admin not found
+          content: {}
+      x-codegen-request-body-name: body
+    delete:
+      tags:
+      - admin
+      summary: Delete admin
+      description: This can only be done by the logged in admin.
+      operationId: deleteAdmin
+      parameters:
+      - name: admin_id
+        in: path
+        description: ID of admin to return
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        400:
+          description: Invalid admin_name supplied
+          content: {}
+        404:
+          description: Admin not found
+          content: {}
+  /timetable/{timetableId}:
+    get:
+      tags:
+      - timetable 
+      summary: Find timetable
+      description: Returns a single timetable
+      operationId: getTimetableById
+      parameters:
+      - name: timetableId
+        in: path
+        description: ID of timetable to return
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Timetable'
+        400:
+          description: Invalid ID supplied
+          content: {}
+        404:
+          description: Timetable not found
+          content: {}
+    put:
+      tags:
+      - timetable
+      summary: Updated timetable
+      description: This can only be done by the logged in admin.
+      operationId: updateTimetable
+      parameters:
+      - name: timetableId
+        in: path
+        description: name that need to be updated
+        required: true
+        schema:
+          type: string
+      requestBody:
+        description: Updated admin object
+        content:
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Timetable'
+        required: true
+      responses:
+        400:
+          description: Invalid timetable supplied
+          content: {}
+        404:
+          description: timetable not found
+          content: {}
+        403:
+          description: access denied
+      x-codegen-request-body-name: body
+    delete:
+      tags:
+      - timetable
+      summary: Delete timetable
+      description: This can only be done by the logged in admin.
+      operationId: deleteTimetable
+      parameters:
+      - name: timetableId
+        in: path
+        description: The timetable that needs to be deleted
+        required: true
+        schema:
+          type: string
+      responses:
+        400:
+          description: Invalid timetableId supplied
+          content: {}
+        404:
+          description: Timetable not found
+          content: {}
+        403:
+          description: access denied 
+  /timetable:
+    post:
+      tags:
+      - timetable
+      summary: Add an info in the timetable.This can only be done by the logged in admin.
+      operationId: AddTimetableWithForm
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              properties:
+                status:
+                  type: string
+                  description: Updated status of the timetable
+      responses:
+        200:
+          description: successful operation
+          content: {}
+        405:
+          description: Invalid input
+          content: {}
+        403:
+          description: access denied 
+      
+components:
+  schemas:
+    Film:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        title:
+          type: string
+        duration:
+          type: number
+          format: float
+        rating:
+          type: number
+          format: float
+      xml:
+        name: Film
+    Hall:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        opacity:
+          type: integer
+          format: int32
+      xml:
+        name: Hall
+    Admin:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        phone:
+          type: string
+      xml:
+        name: Admin
+    Place:
+      type: object
+      properties:
+        id: 
+          type: integer
+          format: int32
+        idHall:
+          type: integer
+    Timetable:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        films:
+          $ref: '#/components/schemas/Film'
+        place:
+          $ref: '#/components/schemas/Place'
+  securitySchemes:
+    petstore_auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: http://petstore.swagger.io/oauth/dialog
+          scopes:
+            write:pets: modify info in your account
+            read:pets: read info
+    api_key:
+      type: apiKey
+      name: api_key
+      in: header
