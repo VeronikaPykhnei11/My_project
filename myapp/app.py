@@ -1,20 +1,38 @@
-from flask import Flask, request
+from flask import Flask, request, Response, jsonify
 from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
 from marshmallow import Schema, fields, ValidationError, pre_load
 from flask_migrate import Migrate, MigrateCommand
 from flask_script import Manager
 from sqlalchemy import ForeignKey
+from flask_jwt import jwt_required, JWT, current_identity
 
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
 app.debug = True
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://///home/nika/PycharmProjects/LABA_4_PP/cinema.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
+app.config['SECRET_KEY'] = 'super-secret'
+app.config['JWT_AUTH_URL_RULE'] = '/admin/login'
+app.config['JWT_AUTH_HEADER_PREFIX'] = 'Bearer'
 manager = Manager(app)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 manager.add_command('db', MigrateCommand)
+
+
+def authenticate(username, password):
+    user = Admin.query.filter_by(username=username).first()
+    if user and bcrypt.check_password_hash(user.password, password):
+        return user
+
+
+def identity(payload):
+    user_id = payload['identity']
+    return Admin.query.get(user_id)
+
+
+jwt = JWT(app, authenticate, identity)
 
 
 ##### MODELS #####
@@ -25,6 +43,7 @@ class Film(db.Model):
     duration = db.Column(db.Float(), nullable=False)
     rating = db.Column(db.Float(), nullable=False)
     records = db.relationship('Timetable', backref='Film', uselist=False, lazy='joined')
+
     def repr(self):
         return '<Film %r' % self.title
 
@@ -42,7 +61,7 @@ class Hall(db.Model):
 class Admin(db.Model):
     __tablename__ = 'Admin'
     id = db.Column(db.Integer(), primary_key=True)
-    nickname = db.Column(db.String(255), nullable=False)
+    username = db.Column(db.String(255), nullable=False)
     firstname = db.Column(db.String(255), nullable=False)
     lastname = db.Column(db.String(255), nullable=False)
     email = db.Column(db.String(255), nullable=False)
@@ -59,6 +78,7 @@ class Timetable(db.Model):
     num_of_record = db.Column(db.Integer(), nullable=False)
     film_id = db.Column(db.Integer, ForeignKey('Film.id'))
     hall_id = db.Column(db.Integer, ForeignKey('Hall.id'))
+
 
 ##### SCHEMAS #####
 
@@ -88,7 +108,7 @@ class HallSchema(Schema):
 
 class AdminSchema(Schema):
     id = fields.Int(dump_only=True)
-    nickname = fields.Str(required=True, validate=must_not_be_blank)
+    username = fields.Str(required=True, validate=must_not_be_blank)
     firstname = fields.Str(required=True, validate=must_not_be_blank)
     lastname = fields.Str(required=True, validate=must_not_be_blank)
     email = fields.Email(required=True, validate=must_not_be_blank)
@@ -96,8 +116,9 @@ class AdminSchema(Schema):
     password = fields.Str(required=True, validate=must_not_be_blank)
 
     def format_admin(self, admin):
-        return "Admin: name - {} {}, nickname - {}, email - {}, phone - {}".format(admin.firstname, admin.lastname,
-                                                                                   admin.nickname, admin.email, admin.phone)
+        return "Admin: name - {} {}, username - {}, email - {}, phone - {}".format(admin.firstname, admin.lastname,
+                                                                                   admin.username, admin.email,
+                                                                                   admin.phone)
 
 
 class TimetableSchema(Schema):
@@ -112,13 +133,9 @@ film_schema_put = FilmSchema(only=("id", "rating"))
 hall_schema = HallSchema()
 hall_schema_put = HallSchema(only=("id", "opacity"))
 admin_schema = AdminSchema()
-admins_schema = AdminSchema(only=("id", "nickname"))
+admins_schema = AdminSchema(only=("id", "username"))
 timetable_schema = TimetableSchema()
 timetables_schema = TimetableSchema(only=("id", "film_id"))
-
-
-
-
 
 
 @app.route('/api/v1/hello-world-<int:variant>')
@@ -132,6 +149,7 @@ def main_page():
 
 
 @app.route('/film', methods=['POST'])
+@jwt_required()
 def film_post():
     json = request.json
     if not json:
@@ -150,15 +168,23 @@ def film_post():
         return {"message": "Success"}, 200
 
 
-@app.route('/film/<int:film_id>', methods=['GET', 'PUT', 'DELETE'])
-def film_by_id(film_id):
+@app.route('/film/<int:film_id>', methods=['GET'])
+def film_get_by_id(film_id):
     film = Film.query.get(film_id)
     if not film:
         return {"message": "Film could not be found"}, 404
     if request.method == 'GET':
         film = Film.query.get(film_id)
         return 'Film: title - {}, duration - {}, rating - {}'.format(film.title, film.duration, film.rating), 200
-    elif request.method == 'PUT':
+
+
+@app.route('/film/<int:film_id>', methods=['PUT', 'DELETE'])
+@jwt_required()
+def film_by_id(film_id):
+    film = Film.query.get(film_id)
+    if not film:
+        return {"message": "Film could not be found"}, 404
+    if request.method == 'PUT':
         json = request.json
         if not json:
             return {"message": "No input data provided"}, 404
@@ -177,6 +203,7 @@ def film_by_id(film_id):
 
 
 @app.route('/hall', methods=['POST'])
+@jwt_required()
 def hall_post():
     json = request.json
     if not json:
@@ -192,15 +219,21 @@ def hall_post():
         db.session.commit()
         return {"message": "Success"}, 200
 
-
-@app.route('/hall/<int:hall_id>', methods=['GET', 'PUT', 'DELETE'])
-def hall_by_id(hall_id):
+@app.route('/hall/<int:hall_id>', methods=['GET'])
+def hall_get_by_id(hall_id):
     hall = Hall.query.get(hall_id)
     if not hall:
         return {"message": "Hall could not be found"}, 404
     if request.method == 'GET':
-        return 'Hall: opacity - {}'.format(hall.opacity)
-    elif request.method == 'PUT':
+        return 'Hall: opacity - {}'.format(hall.opacity), 200
+
+@app.route('/hall/<int:hall_id>', methods=['PUT', 'DELETE'])
+@jwt_required()
+def hall_by_id(hall_id):
+    hall = Hall.query.get(hall_id)
+    if not hall:
+        return {"message": "Hall could not be found"}, 404
+    if request.method == 'PUT':
         json = request.json
         if not json:
             return {"message": "No input data provided"}, 404
@@ -228,27 +261,33 @@ def admin_post():
             data = admin_schema.load(json)
         except ValidationError as e:
             return e.messages, 422
-        nickname = data['nickname']
+        username = data['username']
         firstname = data['firstname']
         lastname = data['lastname']
         email = data['email']
         password = data['password']
         pass_hash = bcrypt.generate_password_hash(password)
         phone = data['phone']
-        admin1 = Admin(nickname=nickname, firstname=firstname, lastname=lastname, email=email, phone=phone, password=pass_hash)
+        admin1 = Admin(username=username, firstname=firstname, lastname=lastname, email=email, phone=phone,
+                       password=pass_hash)
         db.session.add(admin1)
         db.session.commit()
         return {"message": "Success"}, 200
 
 
 @app.route('/admin/<int:admin_id>', methods=['GET', 'PUT', 'DELETE'])
+@jwt_required()
 def admin_by_id(admin_id):
     admin = Admin.query.get(admin_id)
     if not admin:
         return {"message": "Admin could not be found"}, 404
     if request.method == 'GET':
-        return 'Admin: id - {}, nickname - {}, firstname - {}, lastname - {}'.format(admin_id, admin.nickname, admin.firstname, admin.lastname), 200
+        return 'Admin: id - {}, username - {}, firstname - {}, lastname - {}'.format(admin_id, admin.username,
+                                                                                     admin.firstname,
+                                                                                     admin.lastname), 200
     elif request.method == 'PUT':
+        if current_identity.id != admin_id:
+            return {"message": "Forbidden"}, 403
         json = request.json
         if not json:
             return {"message": "No input data provided"}, 404
@@ -256,17 +295,20 @@ def admin_by_id(admin_id):
             data = admins_schema.load(json)
         except ValidationError as e:
             return e.messages, 422
-        nickname = data['nickname']
-        db.session.query(Admin).filter(Admin.id == admin_id).update({'nickname': nickname})
+        username = data['username']
+        db.session.query(Admin).filter(Admin.id == admin_id).update({'username': username})
         db.session.commit()
         return {"message": "Success"}, 200
     elif request.method == 'DELETE':
+        if current_identity.id != admin_id:
+            return {"message": "Forbidden"}, 403
         db.session.delete(admin)
         db.session.commit()
         return {"message": "Success"}, 200
 
 
 @app.route('/timetable', methods=['POST'])
+@jwt_required()
 def timetable_post():
     json = request.json
     if not json:
@@ -289,15 +331,22 @@ def timetable_post():
         return {"message": "Success"}, 200
 
 
-@app.route('/timetable/<int:timetable_id>', methods=['GET', 'PUT', 'DELETE'])
-def timetable_by_id(timetable_id):
+@app.route('/timetable/<int:timetable_id>', methods=['GET'])
+def timetable_get_by_id(timetable_id):
     timetable = Timetable.query.get(timetable_id)
     if not timetable:
         return {"message": "Timetable could not be found"}, 404
     if request.method == 'GET':
         timetable = Timetable.query.get(timetable_id)
-        return "Timetable id: {}, film-{}, hall-{}".format(timetable_id, timetable.film_id, timetable.hall_id)
-    elif request.method == 'PUT':
+        return "Timetable id: {}, film-{}, hall-{}".format(timetable_id, timetable.film_id, timetable.hall_id), 200
+
+@app.route('/timetable/<int:timetable_id>', methods=['PUT', 'DELETE'])
+@jwt_required()
+def timetable_by_id(timetable_id):
+    timetable = Timetable.query.get(timetable_id)
+    if not timetable:
+        return {"message": "Timetable could not be found"}, 404
+    if request.method == 'PUT':
         json = request.json
         if not json:
             return {"message": "No input data provided"}, 404
@@ -319,5 +368,3 @@ def timetable_by_id(timetable_id):
 
 if __name__ == '__main__':
     app.run()
-
-
