@@ -24,7 +24,7 @@ sys.path.append(ROOT_PATH)
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from myapp.models import db
+from myapp.app import db
 target_metadata = db.metadata
 
 # other values from the config, defined by the needs of env.py,
