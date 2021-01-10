@@ -44,18 +44,12 @@ class Film(db.Model):
     rating = db.Column(db.Float(), nullable=False)
     records = db.relationship('Timetable', backref='Film', uselist=False, lazy='joined')
 
-    def repr(self):
-        return '<Film %r' % self.title
-
 
 class Hall(db.Model):
     __tablename__ = 'Hall'
     id = db.Column(db.Integer(), primary_key=True)
     opacity = db.Column(db.Integer(), nullable=False)
     records = db.relationship('Timetable', backref='Hall', uselist=False, lazy='joined')
-
-    def repr(self):
-        return "Hall: {} - {}>".format(id, self.opacity)
 
 
 class Admin(db.Model):
@@ -67,9 +61,6 @@ class Admin(db.Model):
     email = db.Column(db.String(255), nullable=False)
     phone = db.Column(db.String(255), nullable=False)
     password = db.Column(db.String(255), nullable=False)
-
-    def repr(self):
-        return "Admin: {} - {} {}>".format(id, self.firstname, self.lastname)
 
 
 class Timetable(db.Model):
@@ -94,16 +85,10 @@ class FilmSchema(Schema):
     duration = fields.Float(required=True, validate=must_not_be_blank)
     rating = fields.Float(required=True, validate=must_not_be_blank)
 
-    def format_film(self, film):
-        return "Title - {}, duration - {}, rating - {}".format(film.title, film.duration, film.rating)
-
 
 class HallSchema(Schema):
     id = fields.Int(dump_only=True)
     opacity = fields.Int(required=True, validate=must_not_be_blank)
-
-    def format_hall(self, hall):
-        return "Hall ID: {}, opacity: {}".format(hall.id, hall.opacity)
 
 
 class AdminSchema(Schema):
@@ -114,11 +99,6 @@ class AdminSchema(Schema):
     email = fields.Email(required=True, validate=must_not_be_blank)
     phone = fields.Str(required=True, validate=must_not_be_blank)
     password = fields.Str(required=True, validate=must_not_be_blank)
-
-    def format_admin(self, admin):
-        return "Admin: name - {} {}, username - {}, email - {}, phone - {}".format(admin.firstname, admin.lastname,
-                                                                                   admin.username, admin.email,
-                                                                                   admin.phone)
 
 
 class TimetableSchema(Schema):
@@ -140,12 +120,12 @@ timetables_schema = TimetableSchema(only=("id", "film_id"))
 
 @app.route('/api/v1/hello-world-<int:variant>')
 def hello_world(variant):
-    return 'Hello World ' + str(variant) + "!"
+    return jsonify('Hello World ' + str(variant) + "!")
 
 
 @app.route('/')
 def main_page():
-    return 'My Project'
+    return jsonify('My Project')
 
 
 @app.route('/film', methods=['POST'])
@@ -165,7 +145,7 @@ def film_post():
         film1 = Film(title=title, duration=duration, rating=rating)
         db.session.add(film1)
         db.session.commit()
-        return {"message": "Success"}, 200
+        return jsonify({"message": "Success"}), 200
 
 
 @app.route('/film/<int:film_id>', methods=['GET'])
@@ -219,6 +199,7 @@ def hall_post():
         db.session.commit()
         return {"message": "Success"}, 200
 
+
 @app.route('/hall/<int:hall_id>', methods=['GET'])
 def hall_get_by_id(hall_id):
     hall = Hall.query.get(hall_id)
@@ -226,6 +207,7 @@ def hall_get_by_id(hall_id):
         return {"message": "Hall could not be found"}, 404
     if request.method == 'GET':
         return 'Hall: opacity - {}'.format(hall.opacity), 200
+
 
 @app.route('/hall/<int:hall_id>', methods=['PUT', 'DELETE'])
 @jwt_required()
@@ -252,6 +234,7 @@ def hall_by_id(hall_id):
 
 
 @app.route('/admin', methods=['POST'])
+@jwt_required()
 def admin_post():
     json = request.json
     if not json:
@@ -286,8 +269,6 @@ def admin_by_id(admin_id):
                                                                                      admin.firstname,
                                                                                      admin.lastname), 200
     elif request.method == 'PUT':
-        if current_identity.id != admin_id:
-            return {"message": "Forbidden"}, 403
         json = request.json
         if not json:
             return {"message": "No input data provided"}, 404
@@ -300,8 +281,6 @@ def admin_by_id(admin_id):
         db.session.commit()
         return {"message": "Success"}, 200
     elif request.method == 'DELETE':
-        if current_identity.id != admin_id:
-            return {"message": "Forbidden"}, 403
         db.session.delete(admin)
         db.session.commit()
         return {"message": "Success"}, 200
@@ -339,6 +318,7 @@ def timetable_get_by_id(timetable_id):
     if request.method == 'GET':
         timetable = Timetable.query.get(timetable_id)
         return "Timetable id: {}, film-{}, hall-{}".format(timetable_id, timetable.film_id, timetable.hall_id), 200
+
 
 @app.route('/timetable/<int:timetable_id>', methods=['PUT', 'DELETE'])
 @jwt_required()
