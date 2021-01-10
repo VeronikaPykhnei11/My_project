@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 flask = "*"
 gunicorn = "*"
+coverage = "*"
 
 [requires]
 python_version = "3.8"
